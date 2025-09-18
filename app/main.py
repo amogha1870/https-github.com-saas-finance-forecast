@@ -1,6 +1,7 @@
-﻿from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify
 from app.calculation_engine import generate_forecast
 from app.llm_integration import explain_forecast
+from app.knowledge_base import get_large_customer_revenue, get_default_cac  # Import helper functions
 
 app = Flask(__name__)
 
@@ -28,4 +29,9 @@ def explain():
     return jsonify({"explanation": explanation})
 
 if __name__ == "__main__":
+    # Print values when running this script directly
+    print("Large customer revenue:", get_large_customer_revenue())
+    print("CAC:", get_default_cac())
+
     app.run(debug=True)
+
