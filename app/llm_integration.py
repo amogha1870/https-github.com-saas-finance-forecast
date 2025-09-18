@@ -1,11 +1,4 @@
 # app/llm_integration.py
-"""
-Natural-language parser for SaaS revenue forecasts.
-Usage:
-    from app.llm_integration import parse_query
-    params, conf, notes = parse_query("Generate a 12-month revenue forecast …")
-"""
-
 import os, json, re
 from dotenv import load_dotenv
 load_dotenv()
@@ -24,7 +17,6 @@ from app.fallback_utils import (
     parse_new_sales_per_month, parse_marketing
 )
 
-# defaults (can also load from knowledge_base.json if you prefer)
 KB_DEFAULTS = {
     "company_type": "SaaS",
     "revenue_per_large_customer_per_month": 16500,
@@ -66,23 +58,31 @@ FEW_SHOT_EXAMPLES = [
 ]
 
 def call_llm_for_params(query):
-    if openai is None: return None
+    if openai is None or not OPENAI_API_KEY:
+        return None
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     for ex in FEW_SHOT_EXAMPLES:
         messages.append({"role": "user", "content": ex["user"]})
         messages.append({"role": "assistant", "content": json.dumps(ex["assistant"])})
     messages.append({"role": "user", "content": query + "\nReturn JSON only."})
     try:
-        resp = openai.ChatCompletion.create(model=MODEL, messages=messages, temperature=0.0, max_tokens=400)
+        resp = openai.ChatCompletion.create(
+            model=MODEL,
+            messages=messages,
+            temperature=0.0,
+            max_tokens=400
+        )
         return resp["choices"][0]["message"]["content"]
     except Exception as e:
         print("LLM call error:", e)
         return None
 
 def try_extract_json(txt):
-    if not txt: return None
+    if not txt:
+        return None
     m = re.search(r'(\{.*\})', txt, flags=re.DOTALL)
-    if not m: return None
+    if not m:
+        return None
     jtxt = m.group(1)
     try:
         return json.loads(jtxt)
@@ -96,42 +96,38 @@ def try_extract_json(txt):
 
 def fallback_parse(query):
     params = {}
-    dur = parse_duration(query)
-    if dur: params["duration_months"] = dur
-    isp = parse_initial_salespeople(query)
-    if isp is not None: params["initial_salespeople"] = isp
-    newspm = parse_new_sales_per_month(query)
-    if newspm is not None: params["new_salespeople_per_month"] = newspm
-    mkt = parse_marketing(query)
-    if mkt is not None:
+    if dur := parse_duration(query):
+        params["duration_months"] = dur
+    if isp := parse_initial_salespeople(query):
+        params["initial_salespeople"] = isp
+    if newspm := parse_new_sales_per_month(query):
+        params["new_salespeople_per_month"] = newspm
+    if mkt := parse_marketing(query):
         if re.search(r'per month|/month|monthly', query, re.I):
             params["marketing_spend_per_month"] = mkt
         else:
             params["marketing_spend_total"] = mkt
-    m = re.search(r'revenue per (enterprise|large) customer[s]?\s*\$?([\d,\.kmKM]+)', query, re.I)
-    if m:
+    if m := re.search(r'(enterprise|large).*customer.*\$?([\d,\.kmKM]+)', query, re.I):
         params["revenue_per_large_customer_per_month"] = int(parse_amount(m.group(2)))
-    m2 = re.search(r'CAC\s*\$?([\d,\.kmKM]+)', query, re.I)
-    if m2:
+    if m2 := re.search(r'CAC\s*\$?([\d,\.kmKM]+)', query, re.I):
         params["avg_cac"] = int(parse_amount(m2.group(1)))
-    m3 = re.search(r'conversion\s*(rate)?\s*(of)?\s*([\d\.]+)\s*%', query, re.I)
-    if m3:
-        params["smb_conversion_rate"] = float(m3.group(3)) / 100.0
+    if m3 := re.search(r'conversion.*?([\d\.]+)\s*%', query, re.I):
+        params["smb_conversion_rate"] = float(m3.group(1)) / 100.0
     return params
 
 def validate_and_fill_defaults(params, source):
-    note = {}
+    notes = []
     for k, v in KB_DEFAULTS.items():
         if k not in params or params.get(k) is None:
             params[k] = v
-            note[k] = "default_used"
+            notes.append(k)
     if "duration_months" in params:
         params["duration_months"] = int(params["duration_months"])
     conf = 0.9 if source == "llm" else 0.6
-    if len(note) >= 3: conf -= 0.3
-    if conf < 0.2: conf = 0.2
-    params["assumptions_used"] = {"note": f"default fields filled: {list(note.keys())}"} if note else {}
-    return params, conf, params["assumptions_used"].get("note","")
+    if len(notes) >= 3:
+        conf -= 0.3
+    conf = max(conf, 0.2)
+    return params, conf, f"default fields filled: {notes}" if notes else ""
 
 def parse_query(query):
     llm_txt = call_llm_for_params(query)
@@ -147,3 +143,4 @@ if __name__ == "__main__":
     p, c, n = parse_query(q)
     print(json.dumps(p, indent=2))
     print("Confidence:", c, "Notes:", n)
+
