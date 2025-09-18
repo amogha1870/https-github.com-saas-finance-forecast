@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SaaS Revenue Forecast</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f4f4f4; }
+        h1 { text-align: center; }
+        #container { max-width: 700px; margin: auto; padding: 20px; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        textarea { width: 100%; height: 100px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; margin-bottom: 15px; }
+        select, button { padding: 10px; border-radius: 5px; border: 1px solid #ccc; margin-right: 10px; }
+        pre { background: #f9f9f9; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>SaaS Revenue Forecast</h1>
+    <div id="container">
+        <textarea id="query" placeholder="Enter your forecast query here..."></textarea>
+        <div>
+            <select id="format">
+                <option value="json">JSON</option>
+                <option value="excel">Excel</option>
+                <option value="csv">CSV</option>
+            </select>
+            <button onclick="sendQuery()">Generate Forecast</button>
+        </div>
+        <h3>Output:</h3>
+        <pre id="output"></pre>
+    </div>
+
+    <script>
+        async function sendQuery() {
+            const query = document.getElementById("query").value;
+            const format = document.getElementById("format").value;
+            const output = document.getElementById("output");
+
+            if (!query) {
+                output.textContent = "Please enter a query.";
+                return;
+            }
+
+            const payload = { query, format };
+
+            try {
+                const response = await fetch("/forecast", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (format === "json") {
+                    const data = await response.json();
+                    output.textContent = JSON.stringify(data, null, 2);
+                } else if (format === "excel" || format === "csv") {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `forecast.${format === "excel" ? "xlsx" : "csv"}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    output.textContent = `Downloaded forecast.${format === "excel" ? "xlsx" : "csv"}`;
+                }
+            } catch (err) {
+                output.textContent = "Error: " + err;
+            }
+        }
+    </script>
+</body>
+</html>
