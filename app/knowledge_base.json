@@ -1,3 +1,21 @@
-﻿{
-  "default_explanation": "The forecast predicts increasing revenue over time, showing positive growth."
+{
+  "company_type": "SaaS",
+  "units": {
+    "large": {
+      "arpu_monthly": 16500,
+      "signings_per_salesperson_per_month": 1.5,
+      "notes": "Each salesperson signs 1-2 large customers per month; default 1.5"
+    },
+    "smb": {
+      "avg_revenue_per_customer_monthly": 1000,
+      "cac": 1500,
+      "conversion_demo_to_paid": 0.45,
+      "notes": "CAC is $ per paying SMB customer; conversion is the fraction of demo->paid"
+    }
+  },
+  "defaults": {
+    "forecast_months": 12,
+    "marketing_allocation_period": "total",
+    "rounding": "float"
+  }
 }
