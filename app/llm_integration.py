@@ -12,17 +12,19 @@ try:
 except Exception:
     openai = None
 
+# Simple fallback parsers
 from app.fallback_utils import (
     parse_amount, parse_duration, parse_initial_salespeople,
     parse_new_sales_per_month, parse_marketing
 )
 
+# Default values if missing
 KB_DEFAULTS = {
     "company_type": "SaaS",
     "revenue_per_large_customer_per_month": 16500,
     "avg_cac": 1500,
     "smb_conversion_rate": 0.45,
-    "revenue_per_smb_customer_per_month": 500
+    "revenue_per_smb_customer_per_month": 1500
 }
 
 SYSTEM_PROMPT = (
@@ -138,9 +140,5 @@ def parse_query(query):
     params, conf, notes = validate_and_fill_defaults(params, source)
     return params, conf, notes
 
-if __name__ == "__main__":
-    q = "Generate a 12-month revenue forecast for a SaaS company with 2 sales people starting, 200k marketing spend, and 1 new salesperson added monthly."
-    p, c, n = parse_query(q)
-    print(json.dumps(p, indent=2))
-    print("Confidence:", c, "Notes:", n)
-
+# Alias for main.py
+parse_user_query = parse_query
