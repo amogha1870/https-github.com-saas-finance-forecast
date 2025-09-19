@@ -3,68 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <title>SaaS Revenue Forecast</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f4f4f4; }
-        h1 { text-align: center; }
-        #container { max-width: 700px; margin: auto; padding: 20px; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-        textarea { width: 100%; height: 100px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; margin-bottom: 15px; }
-        select, button { padding: 10px; border-radius: 5px; border: 1px solid #ccc; margin-right: 10px; }
-        pre { background: #f9f9f9; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        input, button { padding: 8px; font-size: 16px; margin: 5px 0; }
+        #results { margin-top: 30px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     </style>
 </head>
 <body>
     <h1>SaaS Revenue Forecast</h1>
-    <div id="container">
-        <textarea id="query" placeholder="Enter your forecast query here..."></textarea>
-        <div>
-            <select id="format">
-                <option value="json">JSON</option>
-                <option value="excel">Excel</option>
-                <option value="csv">CSV</option>
-            </select>
-            <button onclick="sendQuery()">Generate Forecast</button>
-        </div>
-        <h3>Output:</h3>
-        <pre id="output"></pre>
+
+    <label for="query">Enter Forecast Query:</label><br>
+    <input type="text" id="query" size="80" placeholder="E.g., Forecast revenue for 6 months, 2 starting salespeople, $50k marketing spend.">
+    <button onclick="getForecast()">Get Forecast</button>
+
+    <div id="results">
+        <h2>Forecast JSON</h2>
+        <pre id="jsonOutput">{}</pre>
+
+        <h2>Total Revenue Chart</h2>
+        <canvas id="revenueChart" width="800" height="400"></canvas>
+
+        <h2>Download Forecast</h2>
+        <button onclick="downloadForecast('excel')">Download Excel</button>
+        <button onclick="downloadForecast('csv')">Download CSV</button>
     </div>
 
     <script>
-        async function sendQuery() {
-            const query = document.getElementById("query").value;
-            const format = document.getElementById("format").value;
-            const output = document.getElementById("output");
+        let chart;
 
-            if (!query) {
-                output.textContent = "Please enter a query.";
+        async function getForecast() {
+            const query = document.getElementById('query').value;
+
+            const response = await fetch('/forecast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query, format: "json" })
+            });
+
+            const data = await response.json();
+            document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
+
+            // Prepare data for chart
+            const months = Object.keys(data).sort((a, b) => parseInt(a.substring(1)) - parseInt(b.substring(1)));
+            const totalRevenue = months.map(m => data[m]['Total Revenue']);
+
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+
+            if (chart) chart.destroy(); // destroy previous chart
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Total Revenue',
+                        data: totalRevenue,
+                        borderColor: 'blue',
+                        backgroundColor: 'rgba(0,0,255,0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true },
+                        title: { display: true, text: 'Total Revenue Forecast' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        async function downloadForecast(format) {
+            const query = document.getElementById('query').value;
+
+            const response = await fetch('/forecast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query, format: format })
+            });
+
+            if (!response.ok) {
+                alert("Failed to download file");
                 return;
             }
 
-            const payload = { query, format };
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
 
-            try {
-                const response = await fetch("/forecast", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-
-                if (format === "json") {
-                    const data = await response.json();
-                    output.textContent = JSON.stringify(data, null, 2);
-                } else if (format === "excel" || format === "csv") {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `forecast.${format === "excel" ? "xlsx" : "csv"}`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    output.textContent = `Downloaded forecast.${format === "excel" ? "xlsx" : "csv"}`;
-                }
-            } catch (err) {
-                output.textContent = "Error: " + err;
-            }
+            // Set file name based on format
+            a.download = format === 'excel' ? 'forecast.xlsx' : 'forecast.csv';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
         }
     </script>
 </body>
