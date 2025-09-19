@@ -2,28 +2,10 @@ GrowthGrid
 
 This project is a Flask-based web application that integrates a Large Language Model (LLM) with a custom calculation engine to perform forecasting from natural language queries.
 
-Project Structure
-my_flask_app/
-│
-├─ app/
-│  ├─ templates/
-│  │  └─ index.html          # Frontend HTML page
-│  ├─ main.py                # Flask backend
-│  ├─ llm_integration.py     # LLM query parsing & OpenAI API calls
-│  ├─ calculation_engine.py  # Forecasting logic
-│  └─ fallback_utils.py      # Parsers for natural language fallback
-│
-├─ tests/                    # test files are added for testing and checking
-│
-├─ .env                      # Environment variables (API keys, etc.)
-├─ requirements.txt          # Python dependencies
-└─ README.md                 # Project documentation
-
- Setup Instructions
+Setup Instructions:
 1) Clone the repository
 git clone https://github.com/amogha1870/https-github.com-saas-finance-forecast
-
-cd my_flask_app
+cd https-github.com-saas-finance-forecast
 
 2️) Create & activate a virtual environment
 python -m venv venv
